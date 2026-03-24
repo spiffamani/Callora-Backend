@@ -86,7 +86,16 @@ export class RevenueSettlementService {
       // 2. Call contract
       // Note: in a real system we would use the developer's registered Soroban address here.
       // For this mock, we just use the developerId as the address string.
-      const result = await this.settlementClient.distribute(developerId, totalAmount);
+      let result;
+
+      try {
+        result = await this.settlementClient.distribute(developerId, totalAmount);
+      } catch (error) {
+        result = {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown settlement client failure',
+        };
+      }
 
       // 3. Update settlement status and events
       if (result.success && result.txHash) {

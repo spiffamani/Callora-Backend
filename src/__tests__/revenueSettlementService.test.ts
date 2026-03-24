@@ -5,6 +5,7 @@ import { RevenueSettlementService } from '../services/revenueSettlementService.j
 import { InMemoryApiRegistry } from '../data/apiRegistry.js';
 import { SettlementStore } from '../types/developer.js';
 import { ApiRegistry, UsageStore } from '../types/gateway.js';
+import type { SorobanSettlementClient } from '../services/sorobanSettlement.js';
 
 describe('RevenueSettlementService', () => {
   let usageStore: UsageStore;
@@ -173,6 +174,43 @@ describe('RevenueSettlementService', () => {
     expect(settlements[0].status).toBe('failed');
 
     // UsageEvent is STILL unsettled, ready for next batch retry
+    const unsettled = usageStore.getUnsettledEvents();
+    expect(unsettled).toHaveLength(1);
+    expect(unsettled[0].settlementId).toBeUndefined();
+  });
+
+  it('keeps events unsettled when the settlement client throws', async () => {
+    const throwingClient: SorobanSettlementClient = {
+      distribute: async () => {
+        throw new Error('rpc timeout');
+      },
+    };
+
+    service = new RevenueSettlementService(usageStore, settlementStore, apiRegistry, throwingClient, {
+      minPayoutUsdc: 5.0,
+    });
+
+    usageStore.record({
+      id: 'e_throw',
+      requestId: 'r_throw',
+      apiKey: 'k1',
+      apiKeyId: 'k1',
+      apiId: 'api_1',
+      endpointId: 'ep1',
+      userId: 'dev_1',
+      amountUsdc: 10.0,
+      statusCode: 200,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await service.runBatch();
+
+    expect(result).toEqual({ processed: 0, settledAmount: 0, errors: 1 });
+
+    const settlements = settlementStore.getDeveloperSettlements('dev_1');
+    expect(settlements).toHaveLength(1);
+    expect(settlements[0].status).toBe('failed');
+
     const unsettled = usageStore.getUnsettledEvents();
     expect(unsettled).toHaveLength(1);
     expect(unsettled[0].settlementId).toBeUndefined();

@@ -4,6 +4,7 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/?(*.)+(spec|test).ts'],
   moduleNameMapper: {
+    '^(.*/)?generated/prisma/client(\\.js)?$': '<rootDir>/src/test-support/prismaClient.jest.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   transform: {
