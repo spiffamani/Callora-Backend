@@ -5,20 +5,19 @@
  */
 
 import assert from 'node:assert/strict';
-import test, { describe, mock } from 'node:test';
 import type { Pool, PoolClient, QueryResult } from 'pg';
 import { BillingService, type BillingDeductRequest, type SorobanClient } from './billing.js';
 
 // Mock PoolClient
 function createMockClient(
   queryResults: (QueryResult | Error)[],
-  commitError?: Error,
-  rollbackError?: Error
+  _commitError?: Error,
+  _rollbackError?: Error
 ): PoolClient {
   let queryIndex = 0;
 
   return {
-    query: async (sql: string, params?: unknown[]) => {
+    query: async (_sql: string, _params?: unknown[]) => {
       if (queryIndex >= queryResults.length) {
         throw new Error('Unexpected query call');
       }
@@ -128,7 +127,7 @@ describe('BillingService.deduct', () => {
   test('rolls back transaction when Soroban call fails', async () => {
     let queryCallCount = 0;
     const client = {
-      query: async (sql: string, params?: unknown[]) => {
+      query: async (_sql: string, _params?: unknown[]) => {
         queryCallCount++;
         if (queryCallCount === 1) {
           // BEGIN

@@ -7,15 +7,17 @@ import type { Developer } from './db/schema.js';
 import type { DeveloperRepository } from './repositories/developerRepository.js';
 import { InMemoryApiRepository } from './repositories/apiRepository.js';
 import assert from 'node:assert';
-import { mock } from 'node:test';
+
+jest.mock('uuid', () => ({ v4: () => 'mock-uuid-1234' }));
+
 // Mock better-sqlite3 before any module that transitively imports it is loaded.
 // This allows unit tests for app.ts to run without a compiled native binding.
-await mock.module('better-sqlite3', {
-  defaultExport: class MockDatabase {
+jest.mock('better-sqlite3', () => {
+  return class MockDatabase {
     prepare() { return { get: () => null }; }
     exec() { }
     close() { }
-  },
+  };
 });
 
 const seedRepository = () =>
@@ -509,7 +511,8 @@ test('POST /api/developers/apis returns 401 when unauthenticated', async () => {
 
 test('POST /api/developers/apis returns 400 when name is missing', async () => {
   const app = makeApp();
-  const { name: _n, ...body } = validApiBody;
+  const body = { ...validApiBody };
+  delete (body as any).name;
   const res = await request(app)
     .post('/api/developers/apis')
     .set('x-user-id', 'dev-1')
@@ -520,7 +523,8 @@ test('POST /api/developers/apis returns 400 when name is missing', async () => {
 
 test('POST /api/developers/apis returns 400 when base_url is missing', async () => {
   const app = makeApp();
-  const { base_url: _b, ...body } = validApiBody;
+  const body = { ...validApiBody };
+  delete (body as any).base_url;
   const res = await request(app)
     .post('/api/developers/apis')
     .set('x-user-id', 'dev-1')

@@ -1,6 +1,5 @@
 import { EventEmitter } from 'events';
 import {
-    WebhookConfig,
     WebhookEventType,
     WebhookPayload,
     NewApiCallData,

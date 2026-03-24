@@ -6,8 +6,20 @@
  */
 
 import assert from 'node:assert/strict';
-import test, { describe } from 'node:test';
+
 import request from 'supertest';
+
+jest.mock('uuid', () => ({ v4: () => 'mock-uuid-1234' }));
+
+// Mock better-sqlite3 to prevent native binding errors on Windows
+jest.mock('better-sqlite3', () => {
+  return class MockDatabase {
+    prepare() { return { get: () => null }; }
+    exec() { }
+    close() { }
+  };
+});
+
 import { createTestDb } from '../helpers/db.js';
 import { createApp } from '../../src/app.js';
 import type { HealthCheckConfig } from '../../src/services/healthCheck.js';
@@ -39,6 +51,9 @@ describe('GET /api/health - Integration Tests', () => {
   test('returns 503 when database is down', async () => {
     const testDb = createTestDb();
     await testDb.end(); // Close pool to simulate database down
+    
+    // pg-mem doesn't throw on query after end(), so we manually force it:
+    testDb.pool.query = async () => { throw new Error('Connection terminated'); };
 
     const config: HealthCheckConfig = {
       version: '1.0.0',

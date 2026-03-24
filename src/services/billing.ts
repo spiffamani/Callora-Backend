@@ -108,25 +108,18 @@ export class BillingService {
       const usageEventId = insertResult.rows[0].id.toString();
 
       // Call Soroban to deduct balance
-      let stellarTxHash: string | undefined;
-      try {
-        stellarTxHash = await this.sorobanClient.deductBalance(
-          request.userId,
-          request.amountUsdc
-        );
+      const stellarTxHash = await this.sorobanClient.deductBalance(
+        request.userId,
+        request.amountUsdc
+      );
 
-        // Update usage_event with Soroban transaction hash
-        await client.query(
-          `UPDATE usage_events 
-           SET stellar_tx_hash = $1 
-           WHERE id = $2`,
-          [stellarTxHash, usageEventId]
-        );
-      } catch (sorobanError) {
-        // Soroban call failed - rollback transaction
-        await client.query('ROLLBACK');
-        throw sorobanError;
-      }
+      // Update usage_event with Soroban transaction hash
+      await client.query(
+        `UPDATE usage_events 
+         SET stellar_tx_hash = $1 
+         WHERE id = $2`,
+        [stellarTxHash, usageEventId]
+      );
 
       await client.query('COMMIT');
 

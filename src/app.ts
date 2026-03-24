@@ -136,7 +136,7 @@ export const createApp = (dependencies?: Partial<AppDependencies>) => {
       const healthStatus = await performHealthCheck(dependencies.healthCheckConfig);
       const statusCode = healthStatus.status === 'down' ? 503 : 200;
       res.status(statusCode).json(healthStatus);
-    } catch (error) {
+    } catch {
       // Never expose internal errors in health check
       res.status(503).json({
         status: 'down',

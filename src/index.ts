@@ -1,13 +1,7 @@
 import express from 'express';
-import webhookRouter from './webhooks/webhook.routes.js';
-import { calloraEvents } from './events/event.emitter.js';
-import helmet from 'helmet';
-import { db, initializeDb, schema, closeDb } from './db/index.js';
-import { eq, desc, and, type SQL } from 'drizzle-orm';
-import { requireAuth, type AuthenticatedLocals } from './middleware/requireAuth.js';
+import { initializeDb, closeDb } from './db/index.js';
+import { type AuthenticatedLocals } from './middleware/requireAuth.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import { BadRequestError, NotFoundError, UnauthorizedError, ForbiddenError } from './errors/index.js';
-import * as developerRepository from './repositories/developerRepository.js';
 import type { Response } from 'express';
 import type { Socket } from 'net';
 
@@ -21,7 +15,7 @@ import { createSettlementStore } from './services/settlementStore.js';
 import { createApiRegistry } from './data/apiRegistry.js';
 import { ApiKey } from './types/gateway.js';
 
-import { fileURLToPath } from 'url';
+
 
 // Helper for Jest/CommonJS compat
 const isDirectExecution = process.argv[1] && (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'));
@@ -35,11 +29,6 @@ app.get('/api/health', (_req, res) => {
 // Check if fil is being run directly (CommonJS / ESM compatibility trick for ts-jest)
 
 if (isDirectExecution) {
-  function asyncHandler<T>(fn: (req: express.Request, res: Response<T, AuthenticatedLocals>, next: express.NextFunction) => Promise<void>) {
-    return (req: express.Request, res: Response<T, AuthenticatedLocals>, next: express.NextFunction) => {
-      Promise.resolve(fn(req, res, next)).catch(next);
-    };
-  }
 
   // Shared services
   const MOCK_DEVELOPER_BALANCES: Record<string, number> = {
@@ -88,7 +77,6 @@ if (isDirectExecution) {
   });
   app.use('/v1/call', proxyRouter);
 
-  const isProduction = process.env.NODE_ENV === 'production';
 
   app.use(express.json());
 

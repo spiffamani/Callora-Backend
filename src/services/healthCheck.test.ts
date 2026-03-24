@@ -6,7 +6,6 @@
  */
 
 import assert from 'node:assert/strict';
-import test, { describe, mock } from 'node:test';
 import type { Pool, QueryResult } from 'pg';
 import {
   checkDatabase,
@@ -81,7 +80,7 @@ describe('checkDatabase', () => {
 
 describe('checkSorobanRpc', () => {
   test('returns ok when Soroban RPC responds quickly', async () => {
-    const mockFetch = mock.fn(async () => ({
+    const mockFetch = jest.fn(async () => ({
       ok: true,
       json: async () => ({ jsonrpc: '2.0', id: 1, result: { status: 'healthy' } }),
     }));
@@ -95,7 +94,7 @@ describe('checkSorobanRpc', () => {
   });
 
   test('returns degraded when Soroban RPC responds with non-ok status', async () => {
-    const mockFetch = mock.fn(async () => ({
+    const mockFetch = jest.fn(async () => ({
       ok: false,
       status: 503,
     }));
@@ -108,7 +107,7 @@ describe('checkSorobanRpc', () => {
   });
 
   test('returns down when Soroban RPC is unreachable', async () => {
-    const mockFetch = mock.fn(async () => {
+    const mockFetch = jest.fn(async () => {
       throw new Error('Network error');
     });
     global.fetch = mockFetch as unknown as typeof fetch;
@@ -120,8 +119,13 @@ describe('checkSorobanRpc', () => {
   });
 
   test('returns down when Soroban RPC times out', async () => {
-    const mockFetch = mock.fn(async () => {
+    const mockFetch = jest.fn(async (url: any, options: any) => {
       await new Promise((resolve) => setTimeout(resolve, 3000));
+      if (options?.signal?.aborted) {
+        const err = new Error('Timeout');
+        err.name = 'AbortError';
+        throw err;
+      }
       return { ok: true, json: async () => ({}) };
     });
     global.fetch = mockFetch as unknown as typeof fetch;
@@ -135,7 +139,7 @@ describe('checkSorobanRpc', () => {
 
 describe('checkHorizon', () => {
   test('returns ok when Horizon responds quickly', async () => {
-    const mockFetch = mock.fn(async () => ({
+    const mockFetch = jest.fn(async () => ({
       ok: true,
     }));
     global.fetch = mockFetch as unknown as typeof fetch;
@@ -147,7 +151,7 @@ describe('checkHorizon', () => {
   });
 
   test('returns degraded when Horizon responds with non-ok status', async () => {
-    const mockFetch = mock.fn(async () => ({
+    const mockFetch = jest.fn(async () => ({
       ok: false,
       status: 500,
     }));
@@ -160,7 +164,7 @@ describe('checkHorizon', () => {
   });
 
   test('returns down when Horizon is unreachable', async () => {
-    const mockFetch = mock.fn(async () => {
+    const mockFetch = jest.fn(async () => {
       throw new Error('ECONNREFUSED');
     });
     global.fetch = mockFetch as unknown as typeof fetch;
@@ -172,8 +176,13 @@ describe('checkHorizon', () => {
   });
 
   test('returns down when Horizon times out', async () => {
-    const mockFetch = mock.fn(async () => {
+    const mockFetch = jest.fn(async (url: any, options: any) => {
       await new Promise((resolve) => setTimeout(resolve, 3000));
+      if (options?.signal?.aborted) {
+        const err = new Error('Timeout');
+        err.name = 'AbortError';
+        throw err;
+      }
       return { ok: true };
     });
     global.fetch = mockFetch as unknown as typeof fetch;
@@ -233,7 +242,7 @@ describe('determineOverallStatus', () => {
 describe('performHealthCheck', () => {
   test('returns healthy status when all components are ok', async () => {
     const pool = createMockPool({ rows: [{ result: 1 }] } as QueryResult);
-    const mockFetch = mock.fn(async () => ({
+    const mockFetch = jest.fn(async () => ({
       ok: true,
       json: async () => ({}),
     }));
@@ -273,7 +282,7 @@ describe('performHealthCheck', () => {
 
   test('returns degraded status when optional component fails', async () => {
     const pool = createMockPool({ rows: [{ result: 1 }] } as QueryResult);
-    const mockFetch = mock.fn(async () => {
+    const mockFetch = jest.fn(async () => {
       throw new Error('Network error');
     });
     global.fetch = mockFetch as unknown as typeof fetch;
