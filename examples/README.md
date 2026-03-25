@@ -1,35 +1,36 @@
 # Examples
 
-This directory contains complete, production-ready examples showing how to use the health check and billing idempotency features.
+This directory contains complete, runnable examples showing how to use the Callora backend subsystems end-to-end.
 
 ## Files
 
 ### 1. complete-integration.ts
 
-**Full production application** integrating both health check and billing features.
+**End-to-end walkthrough** of billing, vault, and gateway features using
+in-memory services.  No database, Stellar node, or external dependency
+required — just run it.
 
 **Features**:
-- Express server with health check endpoint
-- Idempotent billing deduction endpoint
-- Billing status lookup endpoint
+- Express server with health check, vault, gateway, usage, and settlement endpoints
+- In-memory vault creation and funding (simulated on-chain deposit)
+- API gateway with API-key validation, rate limiting, billing deduction, upstream proxy, and usage recording
+- Revenue settlement batch that pays developers from accumulated usage fees
 - Graceful shutdown handling
-- Error handling middleware
-- Database connection pooling
 
 **Usage**:
 ```bash
-# Set environment variables
-cp ../.env.example .env
-# Edit .env with your configuration
-
-# Run the server
+# No environment variables needed — everything runs in memory
 npx tsx examples/complete-integration.ts
 ```
 
 **Endpoints**:
-- `GET /api/health` - Health check with component status
-- `POST /api/billing/deduct` - Idempotent billing deduction
-- `GET /api/billing/status/:requestId` - Check billing request status
+- `GET  /api/health` — Liveness probe
+- `POST /api/vault` — Create a vault (one per user per network)
+- `GET  /api/vault/balance` — Query vault balance
+- `POST /api/vault/fund` — Simulate on-chain deposit
+- `ALL  /api/gateway/:apiId` — Proxy requests to upstream
+- `GET  /api/usage/events` — List recorded usage events
+- `POST /api/settlement/run` — Run revenue settlement batch
 
 ### 2. client-usage.ts
 
