@@ -15,6 +15,13 @@ function getPrismaClient(): PrismaClient {
   return prisma;
 }
 
+export async function disconnectPrisma(): Promise<void> {
+  if (!prisma) {
+    return;
+  }
+  await prisma.$disconnect();
+}
+
 export default new Proxy({} as PrismaClient, {
   get(_target, prop, receiver) {
     const client = getPrismaClient();

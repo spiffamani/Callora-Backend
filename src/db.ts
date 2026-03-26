@@ -18,6 +18,8 @@ export const pool = new Pool({
   connectionTimeoutMillis: config.dbPool.connectionTimeoutMillis,
 });
 
+let poolClosed = false;
+
 /**
  * Convenience helper that proxies to pool.query for simple one-off queries.
  */
@@ -42,4 +44,12 @@ export async function checkDbHealth(): Promise<{ ok: boolean; error?: string }> 
       error: error instanceof Error ? error.message : 'Unknown database error',
     };
   }
+}
+
+export async function closePgPool(): Promise<void> {
+  if (poolClosed) {
+    return;
+  }
+  await pool.end();
+  poolClosed = true;
 }

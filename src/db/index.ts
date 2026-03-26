@@ -5,6 +5,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 const logger = console;
+let sqliteClosed = false;
 
 // Create SQLite database instance
 const sqlite = new Database('./database.db');
@@ -61,7 +62,11 @@ export async function initializeDb() {
 
 // Graceful shutdown
 // Export close function for graceful shutdown
-export function closeDb() {
+export async function closeDb(): Promise<void> {
+  if (sqliteClosed) {
+    return;
+  }
   sqlite.close();
+  sqliteClosed = true;
 }
 export { schema };

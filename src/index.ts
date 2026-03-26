@@ -1,9 +1,11 @@
 import express from 'express';
 import { initializeDb, closeDb } from './db/index.js';
-import { type AuthenticatedLocals } from './middleware/requireAuth.js';
+import { closePgPool } from './db.js';
+import { closeDbPool } from './config/health.js';
+import { disconnectPrisma } from './lib/prisma.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import type { Response } from 'express';
 import type { Socket } from 'net';
+import type { Server } from 'http';
 
 import { createDeveloperRouter } from './routes/developerRoutes.js';
 import { createGatewayRouter } from './routes/gatewayRoutes.js';
@@ -15,7 +17,71 @@ import { createSettlementStore } from './services/settlementStore.js';
 import { createApiRegistry } from './data/apiRegistry.js';
 import { ApiKey } from './types/gateway.js';
 
+type ShutdownLogger = Pick<typeof console, 'log' | 'warn' | 'error'>;
 
+interface GracefulShutdownOptions {
+  server: Server;
+  activeConnections: Set<Socket>;
+  closeDatabase: () => Promise<void>;
+  logger?: ShutdownLogger;
+  timeoutMs?: number;
+}
+
+export function createGracefulShutdownHandler({
+  server,
+  activeConnections,
+  closeDatabase,
+  logger = console,
+  timeoutMs = 30_000,
+}: GracefulShutdownOptions) {
+  let shutdownPromise: Promise<number> | null = null;
+
+  return async (signal: NodeJS.Signals | string): Promise<number> => {
+    if (shutdownPromise) {
+      return shutdownPromise;
+    }
+
+    shutdownPromise = (async () => {
+      logger.log(`\n[shutdown] Received ${signal}. Starting graceful shutdown...`);
+
+      const timeoutHandle = setTimeout(() => {
+        if (activeConnections.size > 0) {
+          logger.warn(`[shutdown] Timeout reached. Destroying ${activeConnections.size} connection(s).`);
+          for (const socket of activeConnections) {
+            socket.destroy();
+          }
+        }
+      }, timeoutMs);
+      timeoutHandle.unref();
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          server.close((err?: Error) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            resolve();
+          });
+        });
+        logger.log('[shutdown] HTTP server closed. No new requests accepted.');
+
+        await closeDatabase();
+        logger.log('[shutdown] Database and pools closed.');
+
+        logger.log('[shutdown] Shutdown complete.');
+        return 0;
+      } catch (error) {
+        logger.error('[shutdown] Shutdown failed:', error);
+        return 1;
+      } finally {
+        clearTimeout(timeoutHandle);
+      }
+    })();
+
+    return shutdownPromise;
+  };
+}
 
 // Helper for Jest/CommonJS compat
 const isDirectExecution = process.argv[1] && (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'));
@@ -85,6 +151,15 @@ if (isDirectExecution) {
 
   const PORT = process.env.PORT ?? 3000;
 
+  const closeAllDataResources = async () => {
+    await closeDb();
+    await Promise.allSettled([
+      closePgPool(),
+      disconnectPrisma(),
+      closeDbPool(),
+    ]);
+  };
+
   // Initialize database and start server
   async function startServer() {
     try {
@@ -102,52 +177,21 @@ if (isDirectExecution) {
         socket.once('close', () => activeConnections.delete(socket));
       });
 
-      async function gracefulShutdown(signal: string) {
-        console.log(`\n[shutdown] Received ${signal}. Starting graceful shutdown...`);
+      const gracefulShutdown = createGracefulShutdownHandler({
+        server,
+        activeConnections,
+        closeDatabase: closeAllDataResources,
+      });
 
-        // 1. Stop accepting new requests
-        server.close(() => {
-          console.log('[shutdown] HTTP server closed. No new requests accepted.');
+      const onSignal = (signal: NodeJS.Signals) => {
+        void gracefulShutdown(signal).then((exitCode) => {
+          process.exit(exitCode);
         });
-
-        // 2. Wait for in-flight requests to finish (max 30s)
-        const TIMEOUT_MS = 30_000;
-        const deadline = setTimeout(() => {
-          console.warn('[shutdown] Timeout reached. Forcing exit.');
-          process.exit(1);
-        }, TIMEOUT_MS);
-        deadline.unref();
-
-        // 3. Wait until all active connections are gone
-        await new Promise<void>((resolve) => {
-          if (activeConnections.size === 0) return resolve();
-          console.log(`[shutdown] Waiting for ${activeConnections.size} in-flight connection(s)...`);
-          const interval = setInterval(() => {
-            if (activeConnections.size === 0) {
-              clearInterval(interval);
-              resolve();
-            }
-          }, 200);
-        });
-
-        // 4. Close the database
-        console.log('[shutdown] Closing database...');
-        try {
-          closeDb();
-          console.log('[shutdown] Database closed.');
-        } catch (err) {
-          console.error('[shutdown] Error closing database:', err);
-        }
-
-        // 5. Exit cleanly
-        console.log('[shutdown] Shutdown complete. Exiting.');
-        clearTimeout(deadline);
-        process.exit(0);
-      }
+      };
 
       // Register shutdown signals
-      process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-      process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
+      process.once('SIGTERM', () => onSignal('SIGTERM'));
+      process.once('SIGINT', () => onSignal('SIGINT'));
 
     } catch (error) {
       console.error('Failed to start server:', error);
