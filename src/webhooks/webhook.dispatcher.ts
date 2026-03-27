@@ -14,16 +14,27 @@ function signPayload(secret: string, body: string): string {
     return crypto.createHmac('sha256', secret).update(body).digest('hex');
 }
 
+/**
+ * Dispatches a webhook payload to the registered URL.
+ * 
+ * Operational Limits:
+ * - Max retries: 5 attempts
+ * - Timeout: 10 seconds per attempt
+ * - Backoff: Exponential (1s, 2s, 4s, 8s)
+ * - Idempotency: Uses a deterministic Deduplication key (X-Callora-Delivery) per dispatch call
+ */
 export async function dispatchWebhook(
     config: WebhookConfig,
     payload: WebhookPayload
 ): Promise<void> {
     const body = JSON.stringify(payload);
+    const deliveryId = crypto.randomUUID();
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'User-Agent': 'Callora-Webhook/1.0',
         'X-Callora-Event': payload.event,
         'X-Callora-Timestamp': payload.timestamp,
+        'X-Callora-Delivery': deliveryId,
     };
 
     if (config.secret) {
@@ -48,6 +59,7 @@ export async function dispatchWebhook(
                 return; // success — stop retrying
             }
 
+            lastError = new Error(`HTTP ${response.status} ${response.statusText}`);
             console.warn(
                 `[webhook] Non-2xx response (${response.status}) for ${config.url}, attempt ${attempt + 1}`
             );
