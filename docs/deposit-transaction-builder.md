@@ -235,13 +235,22 @@ STELLAR_MAINNET_HORIZON_URL=https://horizon.stellar.org
 STELLAR_MAINNET_VAULT_CONTRACT_ID=CC...MAINNET_VAULT
 
 STELLAR_BASE_FEE=100                         # Optional: default 100 stroops
-TRANSACTION_TIMEOUT=300                      # Optional: default 5 minutes
+STELLAR_TRANSACTION_TIMEOUT=300              # Optional: default 5 minutes
+# TRANSACTION_TIMEOUT=300                    # Legacy fallback still supported
 ```
+
+Required configuration for safe transaction building:
+
+- `STELLAR_NETWORK` (or `SOROBAN_NETWORK`) must select exactly one active network.
+- `STELLAR_<NETWORK>_HORIZON_URL` must point to the matching Horizon instance for that network.
+- `STELLAR_<NETWORK>_VAULT_CONTRACT_ID` should be set so the builder can reject mismatched contract IDs.
+- `STELLAR_BASE_FEE` and `STELLAR_TRANSACTION_TIMEOUT` are optional. If omitted, the builder defaults to `100` stroops and `300` seconds.
 
 ## Notes
 
-- Transaction timeout is set to 300 seconds (5 minutes)
-- Base fee is set to 100 stroops
+- Transaction timeout defaults to 300 seconds (5 minutes)
+- Base fee defaults to 100 stroops
+- The builder does not attach a memo unless a valid text memo is provided explicitly
 - The endpoint is stateless and supports horizontal scaling
 - Only read operations are performed on the database
 - Network calls to Horizon may add latency (target: < 500ms)

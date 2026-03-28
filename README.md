@@ -160,11 +160,16 @@ STELLAR_MAINNET_HORIZON_URL=https://horizon.stellar.org
 SOROBAN_MAINNET_RPC_URL=https://soroban-mainnet.stellar.org
 STELLAR_MAINNET_VAULT_CONTRACT_ID=CC...MAINNET_VAULT
 STELLAR_MAINNET_SETTLEMENT_CONTRACT_ID=CC...MAINNET_SETTLEMENT
+
+# Optional transaction builder overrides
+STELLAR_BASE_FEE=100
+STELLAR_TRANSACTION_TIMEOUT=300
 ```
 
 Notes:
 - Do not point a testnet deployment at mainnet URLs or contract IDs (or vice versa).
 - Deposit transaction building uses the configured network Horizon URL and validates vault contract ID when configured.
+- Deposit transaction building defaults to a `100` stroop fee and a `300` second timeout unless overridden.
 - Soroban settlement client uses the configured network RPC URL and settlement contract ID.
 
 This repo is part of [Callora](https://github.com/your-org/callora). Frontend: `callora-frontend`. Contracts: `callora-contracts`.

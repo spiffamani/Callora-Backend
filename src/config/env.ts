@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
+const stellarNetworkSchema = z.enum(['testnet', 'mainnet']);
+
 const envSchema = z
   .object({
     // Server
@@ -40,7 +42,7 @@ const envSchema = z
     SOROBAN_RPC_ENABLED: z
       .string()
       .transform((v) => v === 'true')
-      .default('false'),
+      .default(false),
     SOROBAN_RPC_URL: z.string().url().optional(),
     SOROBAN_RPC_TIMEOUT: z.coerce.number().default(2_000),
 
@@ -48,9 +50,39 @@ const envSchema = z
     HORIZON_ENABLED: z
       .string()
       .transform((v) => v === 'true')
-      .default('false'),
+      .default(false),
     HORIZON_URL: z.string().url().optional(),
     HORIZON_TIMEOUT: z.coerce.number().default(2_000),
+
+    // Stellar network configuration
+    STELLAR_NETWORK: stellarNetworkSchema.optional(),
+    SOROBAN_NETWORK: stellarNetworkSchema.optional(),
+
+    STELLAR_TESTNET_HORIZON_URL: z
+      .string()
+      .url()
+      .default('https://horizon-testnet.stellar.org'),
+    STELLAR_MAINNET_HORIZON_URL: z
+      .string()
+      .url()
+      .default('https://horizon.stellar.org'),
+    SOROBAN_TESTNET_RPC_URL: z
+      .string()
+      .url()
+      .default('https://soroban-testnet.stellar.org'),
+    SOROBAN_MAINNET_RPC_URL: z
+      .string()
+      .url()
+      .default('https://soroban-mainnet.stellar.org'),
+
+    STELLAR_TESTNET_VAULT_CONTRACT_ID: z.string().min(1).optional(),
+    STELLAR_MAINNET_VAULT_CONTRACT_ID: z.string().min(1).optional(),
+    STELLAR_TESTNET_SETTLEMENT_CONTRACT_ID: z.string().min(1).optional(),
+    STELLAR_MAINNET_SETTLEMENT_CONTRACT_ID: z.string().min(1).optional(),
+
+    STELLAR_BASE_FEE: z.coerce.number().int().positive().default(100),
+    STELLAR_TRANSACTION_TIMEOUT: z.coerce.number().int().positive().optional(),
+    TRANSACTION_TIMEOUT: z.coerce.number().int().positive().optional(),
 
     // Health check
     HEALTH_CHECK_DB_TIMEOUT: z.coerce.number().default(2_000),
@@ -65,7 +97,7 @@ const envSchema = z
     GATEWAY_PROFILING_ENABLED: z
       .string()
       .transform((v) => v === 'true')
-      .default('false'),
+      .default(false),
   })
   .superRefine((values, ctx) => {
     if (values.SOROBAN_RPC_ENABLED && !values.SOROBAN_RPC_URL) {
