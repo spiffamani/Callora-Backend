@@ -394,7 +394,7 @@ describe('VaultController - getBalance', () => {
       expect(response.status).toBe(200);
       
       // Validate response structure
-      expect(response.body).toBeObject();
+      expect(response.body).toEqual(expect.any(Object));
       expect(response.body).toHaveProperty('balance_usdc');
       expect(response.body).toHaveProperty('contractId');
       expect(response.body).toHaveProperty('network');

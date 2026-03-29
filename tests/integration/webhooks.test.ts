@@ -158,8 +158,7 @@ describe('Webhook Routes Security Tests', () => {
     });
 
     it('should allow registration without secret (but not recommended)', async () => {
-      const payloadWithoutSecret = { ...validPayload };
-      delete payloadWithoutSecret.secret;
+      const { secret: _secret, ...payloadWithoutSecret } = validPayload;
 
       const response = await request(app)
         .post('/api/webhooks')
@@ -290,8 +289,7 @@ describe('Webhook Signature Verification Tests', () => {
   });
 
   it('should not include signature header when no secret is provided', async () => {
-    const configWithoutSecret = { ...testConfig };
-    delete configWithoutSecret.secret;
+    const { secret: _secret, ...configWithoutSecret } = testConfig;
 
     mockFetch.mockResolvedValue({
       ok: true,

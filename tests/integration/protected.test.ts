@@ -155,7 +155,27 @@ const stubDeveloperRepository: DeveloperRepository = {
 };
 
 class StubApiRepository implements ApiRepository {
+  async create(_api: Parameters<ApiRepository['create']>[0]) {
+    return {
+      id: 1,
+      developer_id: 0,
+      name: 'stub',
+      description: null,
+      base_url: 'https://example.com',
+      logo_url: null,
+      category: null,
+      status: 'draft' as const,
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+  }
+  async update() {
+    return null;
+  }
   async listByDeveloper(_developerId: number, _filters?: ApiListFilters) {
+    return [];
+  }
+  async listPublic() {
     return [];
   }
   async findById() {

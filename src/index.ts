@@ -25,6 +25,60 @@ import { config } from './config/index.js';
 // Helper for Jest/CommonJS compat
 const isDirectExecution = process.argv[1] && (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'));
 
+interface GracefulShutdownOptions {
+  server: Server;
+  activeConnections: Set<Socket>;
+  closeDatabase: () => Promise<void>;
+  logger?: Pick<typeof console, 'log' | 'warn' | 'error'>;
+  timeoutMs?: number;
+}
+
+export function createGracefulShutdownHandler({
+  server,
+  activeConnections,
+  closeDatabase,
+  logger = console,
+  timeoutMs = 10_000,
+}: GracefulShutdownOptions) {
+  let inFlight: Promise<number> | null = null;
+
+  return (signal: NodeJS.Signals): Promise<number> => {
+    if (inFlight) {
+      return inFlight;
+    }
+
+    inFlight = new Promise<number>((resolve) => {
+      logger.log(`Received ${signal}, shutting down gracefully`);
+
+      const timeout = setTimeout(() => {
+        for (const socket of activeConnections) {
+          socket.destroy();
+        }
+      }, timeoutMs);
+
+      server.close(async (error?: Error) => {
+        clearTimeout(timeout);
+
+        if (error) {
+          logger.error('Error while closing HTTP server', error);
+          resolve(1);
+          return;
+        }
+
+        try {
+          await closeDatabase();
+          resolve(0);
+        } catch (closeError) {
+          logger.error('Error while closing data resources', closeError);
+          resolve(1);
+        }
+      });
+    });
+
+    return inFlight;
+  };
+}
+
 export const app = express();
 
 app.get('/api/health', (_req, res) => {
@@ -133,7 +187,7 @@ if (isDirectExecution) {
       });
 
       const onSignal = (signal: NodeJS.Signals) => {
-        void gracefulShutdown(signal).then((exitCode) => {
+        void gracefulShutdown(signal).then((exitCode: number) => {
           process.exit(exitCode);
         });
       };

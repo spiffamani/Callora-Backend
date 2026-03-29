@@ -6,7 +6,7 @@ export type WebhookEventType =
 export interface WebhookConfig {
     developerId: string;
     url: string;
-    events: WebhookEventType[];
+    events: string[];
     secret?: string; // for HMAC signature (optional but recommended)
     createdAt: Date;
 }

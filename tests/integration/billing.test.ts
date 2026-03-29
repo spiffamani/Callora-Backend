@@ -12,13 +12,18 @@ import { BillingService, type BillingDeductRequest, type SorobanClient } from '.
 class MockSorobanClient implements SorobanClient {
   private callCount = 0;
   private shouldFail = false;
+  private balance = '1000000000';
 
-  async deductBalance(userId: string, amount: string): Promise<string> {
+  async getBalance(): Promise<{ balance: string }> {
+    return { balance: this.balance };
+  }
+
+  async deductBalance(userId: string, amount: string): Promise<{ txHash: string }> {
     this.callCount++;
     if (this.shouldFail) {
       throw new Error('Soroban network error');
     }
-    return `tx_${userId}_${amount}_${this.callCount}`;
+    return { txHash: `tx_${userId}_${amount}_${this.callCount}` };
   }
 
   getCallCount(): number {
@@ -27,6 +32,10 @@ class MockSorobanClient implements SorobanClient {
 
   setShouldFail(fail: boolean): void {
     this.shouldFail = fail;
+  }
+
+  setBalance(balance: string): void {
+    this.balance = balance;
   }
 
   reset(): void {

@@ -76,9 +76,9 @@ export function createDeveloperRouter(deps: DeveloperRoutesDeps): Router {
       }
       const developerId = user ? user.id : req.developerId!;
 
-      // Query parameters are now validated and transformed by Zod
-      const limit = req.query.limit as number;
-      const offset = req.query.offset as number;
+      const parsedQuery = revenueQuerySchema.parse(req.query);
+      const limit = parsedQuery.limit;
+      const offset = parsedQuery.offset;
 
     // Fetch settlements
     const allSettlements = settlementStore.getDeveloperSettlements(developerId);

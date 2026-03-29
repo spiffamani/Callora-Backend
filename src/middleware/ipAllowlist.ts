@@ -96,12 +96,14 @@ export function createIpAllowlist(config: IpAllowlistConfig) {
   }
 
   // Log configuration for security audit
-  logger.info('IP allowlist middleware configured', {
-    allowedRangesCount: allowedRanges.length,
-    trustProxy,
-    proxyHeaders,
-    enabled,
-  });
+  logger.info(
+    `IP allowlist middleware configured ${JSON.stringify({
+      allowedRangesCount: allowedRanges.length,
+      trustProxy,
+      proxyHeaders,
+      enabled,
+    })}`
+  );
 
   return (req: Request, res: Response, next: NextFunction): void => {
     // Skip IP checking if allowlist is disabled
@@ -114,11 +116,13 @@ export function createIpAllowlist(config: IpAllowlistConfig) {
 
     // Validate extracted IP format
     if (!isValidIp(clientIp)) {
-      logger.warn('Invalid IP format detected', {
-        ip: clientIp,
-        userAgent: req.get('User-Agent'),
-        path: req.path,
-      });
+      logger.warn(
+        `Invalid IP format detected ${JSON.stringify({
+          ip: clientIp,
+          userAgent: req.get('User-Agent'),
+          path: req.path,
+        })}`
+      );
       
       res.status(400).json({ 
         error: 'Bad Request: invalid client IP format',
@@ -132,13 +136,15 @@ export function createIpAllowlist(config: IpAllowlistConfig) {
 
     if (!isAllowed) {
       // Log blocked attempt for security monitoring
-      logger.warn('IP allowlist blocked request', {
-        clientIp,
-        path: req.path,
-        method: req.method,
-        userAgent: req.get('User-Agent'),
-        timestamp: new Date().toISOString(),
-      });
+      logger.warn(
+        `IP allowlist blocked request ${JSON.stringify({
+          clientIp,
+          path: req.path,
+          method: req.method,
+          userAgent: req.get('User-Agent'),
+          timestamp: new Date().toISOString(),
+        })}`
+      );
 
       res.status(403).json({ 
         error: 'Forbidden: IP address not allowed',
@@ -148,11 +154,13 @@ export function createIpAllowlist(config: IpAllowlistConfig) {
     }
 
     // Log successful allowlist check for audit trail
-    logger.debug('IP allowlist check passed', {
-      clientIp,
-      path: req.path,
-      method: req.method,
-    });
+    logger.info(
+      `IP allowlist check passed ${JSON.stringify({
+        clientIp,
+        path: req.path,
+        method: req.method,
+      })}`
+    );
 
     next();
   };

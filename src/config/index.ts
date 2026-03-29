@@ -58,11 +58,9 @@ export const config = {
     idleTimeoutMillis: env.DB_IDLE_TIMEOUT_MS,
     connectionTimeoutMillis: env.DB_CONN_TIMEOUT_MS,
   },
-
   jwt: {
     secret: env.JWT_SECRET,
   },
-
   metrics: {
     apiKey: env.METRICS_API_KEY,
   },
