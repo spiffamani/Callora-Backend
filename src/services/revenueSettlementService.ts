@@ -81,7 +81,16 @@ export class RevenueSettlementService {
         tx_hash: null,
         created_at: new Date().toISOString(),
       };
-      this.settlementStore.create(settlement);
+      try {
+        this.settlementStore.create(settlement);
+      } catch (error) {
+        errors++;
+        console.error(
+          `Settlement ${settlementId} failed for dev ${developerId}:`,
+          this.getErrorMessage(error)
+        );
+        continue;
+      }
 
       // 2. Call contract
       // Note: in a real system we would use the developer's registered Soroban address here.
@@ -99,19 +108,65 @@ export class RevenueSettlementService {
 
       // 3. Update settlement status and events
       if (result.success && result.txHash) {
-        this.settlementStore.updateStatus(settlementId, 'completed', result.txHash);
-        this.usageStore.markAsSettled(eventIds, settlementId);
+        try {
+          this.settlementStore.updateStatus(settlementId, 'completed', result.txHash);
+          this.usageStore.markAsSettled(eventIds, settlementId);
 
-        processed += events.length;
-        settledAmount += totalAmount;
+          processed += events.length;
+          settledAmount += totalAmount;
+        } catch (error) {
+          errors++;
+          this.recordFailedSettlement(
+            settlementId,
+            developerId,
+            `Finalization failed after payout: ${this.getErrorMessage(error)}`,
+            true,
+          );
+        }
       } else {
         // Failed: record failure, do NOT mark events as settled so they retry next batch
-        this.settlementStore.updateStatus(settlementId, 'failed');
         errors++;
-        console.error(`Settlement ${settlementId} failed for dev ${developerId}:`, result.error);
+        this.recordFailedSettlement(settlementId, developerId, result.error);
       }
     }
 
     return { processed, settledAmount, errors };
+  }
+
+  private recordFailedSettlement(
+    settlementId: string,
+    developerId: string,
+    errorMessage?: string,
+    clearTxHash = false,
+  ): void {
+    try {
+      this.settlementStore.updateStatus(
+        settlementId,
+        'failed',
+        clearTxHash ? null : undefined,
+      );
+    } catch (statusError) {
+      console.error(
+        `Settlement ${settlementId} failed for dev ${developerId} and could not persist failure status:`,
+        this.getErrorMessage(statusError)
+      );
+    }
+
+    console.error(
+      `Settlement ${settlementId} failed for dev ${developerId}:`,
+      errorMessage ?? 'Unknown settlement failure'
+    );
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error && error.message.trim()) {
+      return error.message;
+    }
+
+    if (typeof error === 'string' && error.trim()) {
+      return error;
+    }
+
+    return 'Unknown settlement failure';
   }
 }

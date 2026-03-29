@@ -5,7 +5,12 @@ import {
   TransactionBuilderService,
   type StellarNetwork,
   InvalidContractIdError,
+  InvalidAmountError,
+  InvalidMemoError,
+  InvalidStellarAddressError,
   NetworkError,
+  SourceAccountNotFoundError,
+  TransactionBuildError,
 } from '../services/transactionBuilder.js';
 import type { VaultRepository } from '../repositories/vaultRepository.js';
 import { config } from '../config/index.js';
@@ -179,6 +184,20 @@ export class DepositController {
         error: error.message,
         code: 'VAULT_NOT_FOUND',
       });
+    } else if (
+      error instanceof InvalidAmountError ||
+      error instanceof InvalidMemoError ||
+      error instanceof InvalidStellarAddressError
+    ) {
+      res.status(400).json({
+        error: error.message,
+        code: 'INVALID_TRANSACTION_INPUT',
+      });
+    } else if (error instanceof SourceAccountNotFoundError) {
+      res.status(400).json({
+        error: error.message,
+        code: 'SOURCE_ACCOUNT_NOT_FOUND',
+      });
     } else if (error instanceof InvalidContractIdError) {
       res.status(500).json({
         error: 'Invalid vault contract configuration. Please contact support.',
@@ -189,6 +208,11 @@ export class DepositController {
         error: 'Unable to connect to Stellar network. Please try again later.',
         code: 'NETWORK_UNAVAILABLE',
         network: error.message,
+      });
+    } else if (error instanceof TransactionBuildError) {
+      res.status(502).json({
+        error: 'Failed to build Stellar transaction. Please try again later.',
+        code: 'TRANSACTION_BUILD_FAILED',
       });
     } else {
       // Generic error - don't reveal sensitive details

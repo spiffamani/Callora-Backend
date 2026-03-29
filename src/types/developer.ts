@@ -25,6 +25,6 @@ export interface DeveloperRevenueResponse {
 
 export interface SettlementStore {
   create(settlement: Settlement): void;
-  updateStatus(id: string, status: Settlement['status'], txHash?: string): void;
+  updateStatus(id: string, status: Settlement['status'], txHash?: string | null): void;
   getDeveloperSettlements(developerId: string): Settlement[];
 }

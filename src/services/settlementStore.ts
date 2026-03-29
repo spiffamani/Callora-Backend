@@ -7,7 +7,7 @@ export class InMemorySettlementStore implements SettlementStore {
     this.settlements.push(settlement);
   }
 
-  updateStatus(id: string, status: Settlement['status'], txHash?: string): void {
+  updateStatus(id: string, status: Settlement['status'], txHash?: string | null): void {
     const s = this.settlements.find((s) => s.id === id);
     if (s) {
       s.status = status;
