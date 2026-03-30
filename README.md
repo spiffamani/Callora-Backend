@@ -35,6 +35,12 @@ See [docs/gateway-api-key-auth.md](./docs/gateway-api-key-auth.md) for the full 
 - `balanceSnapshot` is stored in smallest units using non-negative integer `bigint` values.
 - `findByUserId` is network-aware and returns the vault for a specific user/network pair.
 
+## Usage events repository behavior
+
+- `PgUsageEventsRepository` provides idempotent `create(...)` writes keyed by `requestId` to prevent double billing on retries.
+- Read methods support time-bounded lookups by `userId` or `apiId`, plus aggregate totals for user spend and API revenue.
+- Amounts are handled as smallest-unit `bigint` values in application code, even though the backing column is named `amount_usdc`.
+
 ## Local setup
 
 1. **Prerequisites:** Node.js 18+
